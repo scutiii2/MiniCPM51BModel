@@ -1,0 +1,70 @@
+# MiniCPM service: N API replicas behind one nginx address, all using one Ollama that holds the model.
+# Start:  docker compose up -d --build          (callers use http://<host>:9130)
+# Scale:  MINICPM_REPLICAS=3 docker compose up -d --build, then: docker compose restart minicpm_lb
+# Ollama queues and parallelises requests itself (OLLAMA_NUM_PARALLEL), so one copy of the model serves every replica.
+
+name: minicpm
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    environment:
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}
+    volumes:
+      - ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+    networks: [minicpm]
+
+  # One-shot: downloads the model into the ollama volume, then exits.
+  minicpm_pull:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["ollama", "pull", "${MINICPM_MODEL:-hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    networks: [minicpm]
+
+  minicpm:
+    build: .
+    restart: unless-stopped
+    environment:
+      MINICPM_TOKEN: ${MINICPM_TOKEN:-}
+      MINICPM_MODEL: ${MINICPM_MODEL:-hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M}
+      OLLAMA_URL: http://ollama:11434
+    deploy:
+      replicas: ${MINICPM_REPLICAS:-2}
+    depends_on:
+      minicpm_pull:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9130/health')"]
+      interval: 15s
+      timeout: 5s
+      start_period: 10s
+    networks: [minicpm]
+
+  minicpm_lb:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "${MINICPM_PORT:-9130}:9130"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      minicpm:
+        condition: service_healthy
+    networks: [minicpm]
+
+volumes:
+  ollama:
+
+networks:
+  # Other stacks reach http://minicpm_lb:9130 by joining this network (or add `citadel_core` here like LayaModel does).
+  minicpm:

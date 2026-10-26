@@ -1,0 +1,52 @@
+# minicpm_service
+
+The one place MiniCPM5-1B is served. It sits in front of Ollama; projects send it turns over HTTP instead of
+talking to Ollama or loading the model themselves. It is built as a tool-calling model: one call is one model turn,
+and the caller runs the tools and the loop.
+
+## API
+
+| Call | Purpose |
+|---|---|
+| `POST /v1/chat` | `{"messages", "tools", "schema", "thinking", "temperature", "max_tokens"}` → `{"content", "thinking", "tool_calls", "finish_reason", "model", "usage", "duration_ms"}`. |
+| `GET /health` | `{"status": "ok", "model", "ready"}`; `ready` is true when Ollama answers and has the model. No token needed. |
+
+**Tool calling.** Send `tools` (`[{"name", "description", "parameters": <JSON schema>}]`). When the model wants a tool
+it answers `finish_reason: "tool_calls"` with `tool_calls: [{"id", "name", "arguments"}]`. Run them, append the
+assistant turn (`{"role": "assistant", "tool_calls": [...]}`) and one `{"role": "tool", "tool_name", "content"}` per
+result to `messages`, and call again; repeat until `finish_reason` is `stop`. `tools` and `schema` cannot be sent
+together.
+
+**Structured output.** A JSON `schema` constrains the reply and also returns it as `parsed`.
+
+**Thinking** is on by default (`"thinking": false` turns it off). The reasoning comes back in `thinking`, and it
+counts against `max_tokens` (default 2048): `finish_reason: "length"` means the budget ran out, often with empty
+`content`.
+
+When `MINICPM_TOKEN` is set, send it as `X-Internal-Token`. Errors: 401 bad token, 422 bad request (or Ollama
+refused the options), 502 Ollama down, model missing or invalid JSON under a `schema` (that body is
+`{"detail": {"message", "content"}}`), 504 Ollama timed out, 500 anything else.
+
+## Run
+
+Local (Ollama installed): pull the model once, then start the service.
+
+```bash
+ollama pull hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M
+run.bat
+```
+
+Docker, with a load balancer: `docker compose up -d --build`. `minicpm` runs `MINICPM_REPLICAS` API copies (default 2)
+behind nginx (`minicpm_lb`, `least_conn`, one retry), all using one `ollama` container that holds the model;
+`minicpm_pull` downloads it on first start. Ollama runs `OLLAMA_NUM_PARALLEL` requests at once (default 2). After
+changing the replica count, run `docker compose restart minicpm_lb`.
+
+## Settings
+
+`MINICPM_HOST` (127.0.0.1), `MINICPM_PORT` (9130), `MINICPM_TOKEN`, `MINICPM_MODEL`
+(`hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M`; `:Q8_0` and `:F16` also exist), `OLLAMA_URL` (http://127.0.0.1:11434).
+
+## Test
+
+`pip install -e ".[dev]"` then `pytest`. The tests fake Ollama. A manual check against the real `Q4_K_M` model got correct tool calls for simple tools
+(weather, add) and a plain refusal when no tool fit; Docker compose has not been run.
