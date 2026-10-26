@@ -36,7 +36,7 @@ ollama pull hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M
 run.bat
 ```
 
-Docker, with a load balancer: `docker compose up -d --build`. `minicpm` runs `MINICPM_REPLICAS` API copies (default 2)
+Docker, with a load balancer: `docker compose up -d --build`. `minicpm` runs `MINICPM_REPLICAS` API copies (default 1)
 behind nginx (`minicpm_lb`, `least_conn`, one retry), all using one `ollama` container that holds the model;
 `minicpm_pull` downloads it on first start. Ollama runs `OLLAMA_NUM_PARALLEL` requests at once (default 2). After
 changing the replica count, run `docker compose restart minicpm_lb`.
