@@ -83,9 +83,11 @@ class Threads(BaseModel):
 
 
 def create_app(client: OllamaClient | None = None, token: str | None = None,
-               tokens: TokenStore | None = None) -> FastAPI:
-    """`token` (MINICPM_TOKEN), when set, must arrive in the X-Internal-Token header; it is also the admin token for
-    /admin/tokens, where each project gets a token of its own. `tokens` holds those (MINICPM_TOKENS_FILE)."""
+               tokens: TokenStore | None = None, admin_password: str | None = None) -> FastAPI:
+    """`token` (MINICPM_TOKEN), when set, must arrive in the X-Internal-Token header. `admin_password` (MINICPM_ADMIN_PASSWORD,
+    falling back to `token`) unlocks /admin/, where each project gets a token of its own. `tokens` holds those
+    (MINICPM_TOKENS_FILE)."""
+    admin_password = admin_password or token
     tokens = tokens or TokenStore(os.environ.get("MINICPM_TOKENS_FILE", "tokens.json"))
     client = client or OllamaClient(os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434"),
                                     os.environ.get("MINICPM_MODEL", DEFAULT_MODEL))
@@ -96,12 +98,12 @@ def create_app(client: OllamaClient | None = None, token: str | None = None,
         await client.close()
 
     def authorize(x_internal_token: str = Header("")) -> None:
-        if token and not hmac.compare_digest(x_internal_token, token) and not tokens.valid(x_internal_token):
+        if (token or admin_password) and not (token and hmac.compare_digest(x_internal_token, token))                 and not tokens.valid(x_internal_token):
             raise HTTPException(401, "Invalid token")
 
     def admin(x_internal_token: str = Header("")) -> None:
-        if not token or not hmac.compare_digest(x_internal_token, token):
-            raise HTTPException(401, "Admin token required (set MINICPM_TOKEN)")
+        if not admin_password or not hmac.compare_digest(x_internal_token, admin_password):
+            raise HTTPException(401, "Admin password required (set MINICPM_ADMIN_PASSWORD)")
 
     threads = settings.load(tokens.settings_path).get("num_thread") or os.environ.get("MINICPM_NUM_THREAD", "").strip()
     if threads:

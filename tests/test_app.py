@@ -172,3 +172,11 @@ def test_num_thread_is_sent_to_ollama_reported_and_set_by_the_admin():
     assert c.get("/health").json()["num_thread"] == 2
     c.post("/v1/chat", json=BODY, headers={"X-Internal-Token": "admin"})
     assert seen["options"]["num_thread"] == 2
+
+
+def test_admin_password_is_separate_from_the_shared_token():
+    ollama = OllamaClient("http://ollama", "m", transport=httpx.MockTransport(lambda r: reply()))
+    c = TestClient(create_app(ollama, "shared", admin_password="pw"))
+    assert c.get("/admin/tokens", headers={"X-Internal-Token": "shared"}).status_code == 401
+    assert c.get("/admin/tokens", headers={"X-Internal-Token": "pw"}).status_code == 200
+    assert c.post("/v1/chat", json=BODY, headers={"X-Internal-Token": "shared"}).status_code == 200
