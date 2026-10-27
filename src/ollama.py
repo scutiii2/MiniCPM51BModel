@@ -19,6 +19,7 @@ class OllamaClient:
     def __init__(self, url: str, model: str, timeout: float = 120.0, keep_alive: str = "30m",
                  transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.model = model
+        self.num_thread: int | None = None  # CPU threads Ollama uses per request; None = Ollama decides
         self._keep_alive = keep_alive
         self._http = httpx.AsyncClient(base_url=url.rstrip("/"), timeout=timeout, transport=transport)
 
@@ -39,6 +40,8 @@ class OllamaClient:
         body: dict[str, Any] = {"model": self.model, "messages": messages, "stream": False, "think": thinking,
                                 "keep_alive": self._keep_alive,
                                 "options": {"temperature": temperature, "num_predict": max_tokens}}
+        if self.num_thread:
+            body["options"]["num_thread"] = self.num_thread
         if tools:
             body["tools"] = tools
         if schema is not None:

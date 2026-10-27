@@ -1,4 +1,4 @@
-# minicpm_service
+# MiniCPM51BModel
 
 The one place MiniCPM5-1B is served. It sits in front of Ollama; projects send it turns over HTTP instead of
 talking to Ollama or loading the model themselves. It is built as a tool-calling model: one call is one model turn,
@@ -38,7 +38,7 @@ run.bat
 
 Docker, with a load balancer: `docker compose up -d --build`. `minicpm` runs `MINICPM_REPLICAS` API copies (default 1)
 behind nginx (`minicpm_lb`, `least_conn`, one retry), all using one `ollama` container that holds the model;
-`minicpm_pull` downloads it on first start. Ollama runs `OLLAMA_NUM_PARALLEL` requests at once (default 2). After
+`minicpm_pull` downloads it on first start. Ollama runs `OLLAMA_NUM_PARALLEL` requests at once (default 2). `MINICPM_NUM_THREAD` caps the CPU threads Ollama uses per request (`/health` reports it; `/admin/` can change and save it; other replicas apply it on restart). After
 changing the replica count, run `docker compose restart minicpm_lb`.
 
 ## Settings
