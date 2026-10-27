@@ -41,6 +41,13 @@ behind nginx (`minicpm_lb`, `least_conn`, one retry), all using one `ollama` con
 `minicpm_pull` downloads it on first start. Ollama runs `OLLAMA_NUM_PARALLEL` requests at once (default 2). `MINICPM_NUM_THREAD` caps the CPU threads Ollama uses per request (`/health` reports it; `/admin/` can change and save it; other replicas apply it on restart). After
 changing the replica count, run `docker compose restart minicpm_lb`.
 
+### Guides
+
+- [Docker on the same device](docs/guide-docker-same-device.md)
+- [Docker on a deployment device](docs/guide-docker-deployment-device.md)
+- [Without Docker on the same device](docs/guide-no-docker-same-device.md)
+- [Admin web UI](docs/guide-web-ui.md): tokens and CPU threads at `/admin/`; the same for every run option
+
 ## Settings
 
 `MINICPM_HOST` (127.0.0.1), `MINICPM_PORT` (9130), `MINICPM_ADMIN_PASSWORD` (unlocks `/admin/`; empty = no auth), `MINICPM_MODEL`
