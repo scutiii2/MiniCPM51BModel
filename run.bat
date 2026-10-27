@@ -15,5 +15,5 @@ if not exist ".venv_minicpm\Scripts\python.exe" (
     call .venv_minicpm\Scripts\activate
 )
 
-python -m minicpm_service.app
+python src/app.py
 pause

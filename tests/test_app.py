@@ -3,8 +3,8 @@ import json
 import httpx
 from fastapi.testclient import TestClient
 
-from minicpm_service.app import create_app
-from minicpm_service.ollama import OllamaClient
+from app import create_app
+from ollama import OllamaClient
 
 BODY = {"messages": [{"role": "user", "content": "hi"}]}
 
@@ -143,7 +143,7 @@ def test_health_reports_model_readiness():
 
 
 def test_each_project_gets_its_own_revocable_token(tmp_path):
-    from minicpm_service.tokens import TokenStore
+    from tokens import TokenStore
     c = TestClient(create_app(OllamaClient('http://ollama', 'm', transport=httpx.MockTransport(lambda r: reply())), 'admin', TokenStore(tmp_path / 't.json')))
     path = "/v1/ask" if "MINICPM" == "LAYA" else "/v1/chat"
     admin = {"X-Internal-Token": "admin"}

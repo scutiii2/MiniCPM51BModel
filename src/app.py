@@ -20,9 +20,9 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
-from minicpm_service.ollama import OllamaClient, OllamaError
-from minicpm_service import settings
-from minicpm_service.tokens import TokenStore
+from ollama import OllamaClient, OllamaError
+import settings
+from tokens import TokenStore
 
 _log = logging.getLogger(__name__)
 
@@ -172,7 +172,7 @@ def create_app(client: OllamaClient | None = None, token: str | None = None,
             raise HTTPException(404, "No such token")
         return {"ok": True}
 
-    web = Path(os.environ.get("MINICPM_WEB_DIR", Path(__file__).resolve().parents[2] / "web"))
+    web = Path(os.environ.get("MINICPM_WEB_DIR", Path(__file__).resolve().parents[1] / "web"))
     if web.is_dir():
         app.mount("/admin", StaticFiles(directory=web, html=True))
 

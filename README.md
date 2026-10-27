@@ -1,4 +1,4 @@
-# minicpm_service
+# MiniCPM51BModel
 
 The one place MiniCPM5-1B is served. It sits in front of Ollama; projects send it turns over HTTP instead of
 talking to Ollama or loading the model themselves. It is built as a tool-calling model: one call is one model turn,
