@@ -1,6 +1,6 @@
 # MiniCPM51BModel: Docker on a deployment device (ZimaOS server)
 
-Run the service on a separate always-on box (default `lex@scutiserver1.local`, folder
+Run the service on a separate always-on box (default `user@your-server.local`, folder
 `/media/ZimaOS-HD/Apps/MiniCPM51BModel`). It is a self-contained compose stack (`ollama`, `minicpm_pull`, `minicpm`,
 `minicpm_lb`) with no Citadel dependency.
 
