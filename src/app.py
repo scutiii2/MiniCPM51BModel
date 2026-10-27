@@ -159,6 +159,15 @@ def create_app(client: OllamaClient | None = None, admin_password: str | None = 
         settings.save(tokens.settings_path, num_thread=body.num_thread)
         return {"num_thread": client.num_thread}
 
+    @app.get("/admin/workers", dependencies=[Depends(admin)])
+    def workers() -> dict[str, Any]:
+        """Read-only: replicas and Ollama's parallel requests are Docker Compose settings the service cannot change."""
+        def number(name: str) -> int | None:
+            value = os.environ.get(name, "").strip()
+            return int(value) if value.isdigit() else None
+
+        return {"replicas": number("MINICPM_REPLICAS"), "ollama_parallel": number("OLLAMA_NUM_PARALLEL")}
+
     @app.get("/admin/tokens", dependencies=[Depends(admin)])
     def list_tokens() -> dict[str, Any]:
         return {"tokens": tokens.list()}

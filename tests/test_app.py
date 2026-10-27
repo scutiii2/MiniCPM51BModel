@@ -168,3 +168,11 @@ def test_num_thread_is_sent_to_ollama_reported_and_set_by_the_admin():
     c.post("/v1/chat", json=BODY, headers={"X-Internal-Token": made["token"]})
     assert seen["options"]["num_thread"] == 2
 
+
+
+def test_workers_are_read_only_and_admin_only(monkeypatch):
+    monkeypatch.setenv("MINICPM_REPLICAS", "3")
+    monkeypatch.delenv("OLLAMA_NUM_PARALLEL", raising=False)
+    c = client(lambda request: reply(), "admin")
+    assert c.get("/admin/workers").status_code == 401
+    assert c.get("/admin/workers", headers={"X-Internal-Token": "admin"}).json() == {"replicas": 3, "ollama_parallel": None}

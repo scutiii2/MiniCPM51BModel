@@ -39,6 +39,8 @@ services:
       MINICPM_MODEL: ${MINICPM_MODEL:-hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M}
       OLLAMA_URL: http://ollama:11434
       MINICPM_NUM_THREAD: ${MINICPM_NUM_THREAD:-4}
+      MINICPM_REPLICAS: ${MINICPM_REPLICAS:-1}  # shown read-only on /admin/
+      OLLAMA_NUM_PARALLEL: ${OLLAMA_NUM_PARALLEL:-2}  # same value Ollama runs with; shown read-only on /admin/
     volumes:
       - tokens:/data
     deploy:
