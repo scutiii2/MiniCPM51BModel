@@ -43,7 +43,7 @@ changing the replica count, run `docker compose restart minicpm_lb`.
 
 ## Settings
 
-`MINICPM_HOST` (127.0.0.1), `MINICPM_PORT` (9130), `MINICPM_TOKEN`, `MINICPM_MODEL`
+`MINICPM_HOST` (127.0.0.1), `MINICPM_PORT` (9130), `MINICPM_ADMIN_PASSWORD` (unlocks `/admin/`; falls back to `MINICPM_TOKEN`), `MINICPM_TOKEN`, `MINICPM_MODEL`
 (`hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M`; `:Q8_0` and `:F16` also exist), `OLLAMA_URL` (http://127.0.0.1:11434).
 
 ## Test
