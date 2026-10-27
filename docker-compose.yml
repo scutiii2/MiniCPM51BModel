@@ -72,5 +72,5 @@ volumes:
   tokens:
 
 networks:
-  # Other stacks reach http://minicpm_lb:9130 by joining this network (or add `citadel_core` here like LayaModel does).
+  # Other stacks reach http://minicpm_lb:9130 by joining this network.
   minicpm:
