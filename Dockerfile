@@ -9,4 +9,4 @@ COPY web ./web
 RUN pip install .
 
 EXPOSE 9130
-CMD ["python", "-m", "minicpm_service.app"]
+CMD ["python", "src/app.py"]
