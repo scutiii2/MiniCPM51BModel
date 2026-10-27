@@ -35,7 +35,6 @@ services:
     build: .
     restart: unless-stopped
     environment:
-      MINICPM_TOKEN: ${MINICPM_TOKEN:-}
       MINICPM_ADMIN_PASSWORD: ${MINICPM_ADMIN_PASSWORD:-}
       MINICPM_MODEL: ${MINICPM_MODEL:-hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M}
       OLLAMA_URL: http://ollama:11434

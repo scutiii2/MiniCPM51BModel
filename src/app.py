@@ -82,12 +82,11 @@ class Threads(BaseModel):
     num_thread: int = Field(ge=1, le=256)
 
 
-def create_app(client: OllamaClient | None = None, token: str | None = None,
-               tokens: TokenStore | None = None, admin_password: str | None = None) -> FastAPI:
-    """`token` (MINICPM_TOKEN), when set, must arrive in the X-Internal-Token header. `admin_password` (MINICPM_ADMIN_PASSWORD,
-    falling back to `token`) unlocks /admin/, where each project gets a token of its own. `tokens` holds those
-    (MINICPM_TOKENS_FILE)."""
-    admin_password = admin_password or token
+def create_app(client: OllamaClient | None = None, admin_password: str | None = None,
+               tokens: TokenStore | None = None) -> FastAPI:
+    """`admin_password` (MINICPM_ADMIN_PASSWORD) unlocks /admin/, where each project gets a token of its own; when it
+    is set, every call except /health must send one of those tokens in the X-Internal-Token header. Unset = no
+    auth at all (local use only). `tokens` holds the project tokens (MINICPM_TOKENS_FILE)."""
     tokens = tokens or TokenStore(os.environ.get("MINICPM_TOKENS_FILE", "tokens.json"))
     client = client or OllamaClient(os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434"),
                                     os.environ.get("MINICPM_MODEL", DEFAULT_MODEL))
@@ -98,7 +97,7 @@ def create_app(client: OllamaClient | None = None, token: str | None = None,
         await client.close()
 
     def authorize(x_internal_token: str = Header("")) -> None:
-        if (token or admin_password) and not (token and hmac.compare_digest(x_internal_token, token))                 and not tokens.valid(x_internal_token):
+        if admin_password and not tokens.valid(x_internal_token):
             raise HTTPException(401, "Invalid token")
 
     def admin(x_internal_token: str = Header("")) -> None:
@@ -184,7 +183,7 @@ def create_app(client: OllamaClient | None = None, token: str | None = None,
 def main() -> None:
     import uvicorn
 
-    app = create_app(token=os.environ.get("MINICPM_TOKEN") or None)
+    app = create_app(admin_password=os.environ.get("MINICPM_ADMIN_PASSWORD") or None)
     uvicorn.run(app, host=os.environ.get("MINICPM_HOST", "127.0.0.1"), port=int(os.environ.get("MINICPM_PORT", "9130")))
 
 
