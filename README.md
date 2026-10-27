@@ -56,4 +56,9 @@ changing the replica count, run `docker compose restart minicpm_lb`.
 ## Test
 
 `pip install -e ".[dev]"` then `pytest`. The tests fake Ollama. A manual check against the real `Q4_K_M` model got correct tool calls for simple tools
-(weather, add) and a plain refusal when no tool fit; Docker compose has not been run.
+(weather, add) and a plain refusal when no tool fit.
+
+## License
+
+The service code is MIT. It does not ship model weights: Ollama downloads MiniCPM5-1B from
+`openbmb/MiniCPM5-1B-GGUF`, which has its own license; read it before redistributing the weights. See [LICENSE](LICENSE) and [CHANGELOG.md](CHANGELOG.md).

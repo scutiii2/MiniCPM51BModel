@@ -1,7 +1,9 @@
 [project]
 name = "minicpm-service"
 description = "One HTTP service in front of Ollama that serves MiniCPM5-1B to every project"
-version = "0.1.0"
+version = "1.0.0"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
