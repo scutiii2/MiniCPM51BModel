@@ -38,6 +38,9 @@ services:
       MINICPM_TOKEN: ${MINICPM_TOKEN:-}
       MINICPM_MODEL: ${MINICPM_MODEL:-hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M}
       OLLAMA_URL: http://ollama:11434
+      MINICPM_NUM_THREAD: ${MINICPM_NUM_THREAD:-4}
+    volumes:
+      - tokens:/data
     deploy:
       replicas: ${MINICPM_REPLICAS:-1}
     depends_on:
@@ -64,6 +67,7 @@ services:
 
 volumes:
   ollama:
+  tokens:
 
 networks:
   # Other stacks reach http://minicpm_lb:9130 by joining this network (or add `citadel_core` here like LayaModel does).

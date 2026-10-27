@@ -6,3 +6,5 @@ __pycache__/
 .env
 zip_versions/
 zip_versions/
+tokens.json
+settings.json

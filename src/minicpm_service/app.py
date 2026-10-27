@@ -11,14 +11,18 @@ import hmac
 import json
 import logging
 import os
+from pathlib import Path
 import time
 from contextlib import asynccontextmanager
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 
 from minicpm_service.ollama import OllamaClient, OllamaError
+from minicpm_service import settings
+from minicpm_service.tokens import TokenStore
 
 _log = logging.getLogger(__name__)
 
@@ -70,8 +74,19 @@ def _ollama_tool(tool: Tool) -> dict[str, Any]:
     return {"type": "function", "function": tool.model_dump()}
 
 
-def create_app(client: OllamaClient | None = None, token: str | None = None) -> FastAPI:
-    """`token` (MINICPM_TOKEN), when set, must arrive in the X-Internal-Token header."""
+class NewToken(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+
+
+class Threads(BaseModel):
+    num_thread: int = Field(ge=1, le=256)
+
+
+def create_app(client: OllamaClient | None = None, token: str | None = None,
+               tokens: TokenStore | None = None) -> FastAPI:
+    """`token` (MINICPM_TOKEN), when set, must arrive in the X-Internal-Token header; it is also the admin token for
+    /admin/tokens, where each project gets a token of its own. `tokens` holds those (MINICPM_TOKENS_FILE)."""
+    tokens = tokens or TokenStore(os.environ.get("MINICPM_TOKENS_FILE", "tokens.json"))
     client = client or OllamaClient(os.environ.get("OLLAMA_URL", "http://127.0.0.1:11434"),
                                     os.environ.get("MINICPM_MODEL", DEFAULT_MODEL))
 
@@ -81,14 +96,23 @@ def create_app(client: OllamaClient | None = None, token: str | None = None) -> 
         await client.close()
 
     def authorize(x_internal_token: str = Header("")) -> None:
-        if token and not hmac.compare_digest(x_internal_token, token):
+        if token and not hmac.compare_digest(x_internal_token, token) and not tokens.valid(x_internal_token):
             raise HTTPException(401, "Invalid token")
+
+    def admin(x_internal_token: str = Header("")) -> None:
+        if not token or not hmac.compare_digest(x_internal_token, token):
+            raise HTTPException(401, "Admin token required (set MINICPM_TOKEN)")
+
+    threads = settings.load(tokens.settings_path).get("num_thread") or os.environ.get("MINICPM_NUM_THREAD", "").strip()
+    if threads:
+        client.num_thread = int(threads)
 
     app = FastAPI(title="MiniCPM5-1B service", lifespan=lifespan)
 
     @app.get("/health")
     async def health() -> dict[str, Any]:
-        return {"status": "ok", "model": client.model, "ready": await client.model_ready()}
+        return {"status": "ok", "model": client.model, "ready": await client.model_ready(),
+                "num_thread": client.num_thread}
 
     @app.post("/v1/chat", dependencies=[Depends(authorize)])
     async def chat(body: ChatRequest) -> dict[str, Any]:
@@ -126,6 +150,31 @@ def create_app(client: OllamaClient | None = None, token: str | None = None) -> 
                 # Cut off by max_tokens or malformed; the caller can still see `content`.
                 raise HTTPException(502, {"message": "The model did not return valid JSON", "content": content}) from None
         return result
+
+    @app.put("/admin/threads", dependencies=[Depends(admin)])
+    def set_threads(body: Threads) -> dict[str, Any]:
+        """Applies to this replica now and is saved; other replicas pick it up when they restart. It beats MINICPM_NUM_THREAD."""
+        client.num_thread = body.num_thread
+        settings.save(tokens.settings_path, num_thread=body.num_thread)
+        return {"num_thread": client.num_thread}
+
+    @app.get("/admin/tokens", dependencies=[Depends(admin)])
+    def list_tokens() -> dict[str, Any]:
+        return {"tokens": tokens.list()}
+
+    @app.post("/admin/tokens", dependencies=[Depends(admin)])
+    def create_token(body: NewToken) -> dict[str, Any]:
+        return tokens.create(body.name.strip())
+
+    @app.delete("/admin/tokens/{token_id}", dependencies=[Depends(admin)])
+    def revoke_token(token_id: str) -> dict[str, bool]:
+        if not tokens.revoke(token_id):
+            raise HTTPException(404, "No such token")
+        return {"ok": True}
+
+    web = Path(os.environ.get("MINICPM_WEB_DIR", Path(__file__).resolve().parents[2] / "web"))
+    if web.is_dir():
+        app.mount("/admin", StaticFiles(directory=web, html=True))
 
     return app
 

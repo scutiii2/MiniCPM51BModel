@@ -138,5 +138,37 @@ def test_request_is_validated():
 
 def test_health_reports_model_readiness():
     ready = client(lambda request: httpx.Response(200, json={"models": [{"name": "m:latest"}]}))
-    assert ready.get("/health").json() == {"status": "ok", "model": "m", "ready": True}
+    assert ready.get("/health").json() == {"status": "ok", "model": "m", "ready": True, "num_thread": None}
     assert client(lambda request: httpx.Response(200, json={"models": []})).get("/health").json()["ready"] is False
+
+
+def test_each_project_gets_its_own_revocable_token(tmp_path):
+    from minicpm_service.tokens import TokenStore
+    c = TestClient(create_app(OllamaClient('http://ollama', 'm', transport=httpx.MockTransport(lambda r: reply())), 'admin', TokenStore(tmp_path / 't.json')))
+    path = "/v1/ask" if "MINICPM" == "LAYA" else "/v1/chat"
+    admin = {"X-Internal-Token": "admin"}
+    assert c.get("/admin/tokens").status_code == 401
+    made = c.post("/admin/tokens", json={"name": "proj"}, headers=admin).json()
+    use = {"X-Internal-Token": made["token"]}
+    assert c.post(path, json=BODY, headers=use).status_code == 200
+    assert c.get("/admin/tokens", headers=use).status_code == 401  # a project token is not an admin
+    assert "token" not in c.get("/admin/tokens", headers=admin).json()["tokens"][0]
+    assert c.delete(f"/admin/tokens/{made['id']}", headers=admin).status_code == 200
+    assert c.post(path, json=BODY, headers=use).status_code == 401
+
+
+def test_num_thread_is_sent_to_ollama_reported_and_set_by_the_admin():
+    seen = {}
+
+    def handler(request):
+        seen.update(json.loads(request.content))
+        return reply()
+
+    c = client(handler, "admin")
+    assert c.get("/health").json()["num_thread"] is None
+    assert c.put("/admin/threads", json={"num_thread": 2}).status_code == 401
+    assert c.put("/admin/threads", json={"num_thread": 0}, headers={"X-Internal-Token": "admin"}).status_code == 422
+    assert c.put("/admin/threads", json={"num_thread": 2}, headers={"X-Internal-Token": "admin"}).json() == {"num_thread": 2}
+    assert c.get("/health").json()["num_thread"] == 2
+    c.post("/v1/chat", json=BODY, headers={"X-Internal-Token": "admin"})
+    assert seen["options"]["num_thread"] == 2
