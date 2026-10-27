@@ -7,4 +7,5 @@ __pycache__/
 zip_versions/
 zip_versions/
 tokens.json
+tokens.json.lock
 settings.json

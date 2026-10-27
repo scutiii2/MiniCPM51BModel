@@ -18,25 +18,42 @@ The page needs the admin password: the value of `MINICPM_ADMIN_PASSWORD`.
 - Empty password = no auth at all and the page answers `Admin password required (set MINICPM_ADMIN_PASSWORD)`. Set
   one to use the page.
 
-## Sign in
-Type the admin password and press **Load**. A wrong password shows `Wrong admin password`. The password is held in
-the page only: reload the tab and sign in again.
+## Sign in and service status
+Type the admin password and press **Sign in**. A wrong password shows an inline `Wrong admin password` error.
+The password stays in `sessionStorage` for this browser tab, so reloading restores the session. **Sign out** clears
+the password and any freshly created token. If browser storage is blocked, sign in again after reloading.
+
+The header shows the service address and a health badge with an icon and text: **Healthy**, **Starting**, or
+**Unreachable**. Health is checked without authentication every 10 seconds while signed in. **Starting** means Ollama
+has not made the model ready yet. Tiles show model readiness, replicas, Ollama parallel requests, CPU threads, and active tokens.
+Use **Theme** to cycle between system, light, and dark appearance; this preference is saved in the browser.
 
 ## Tokens
 Each calling project gets its own token, so one can be revoked without touching the others.
-- **Create:** type a project name (up to 64 characters) and press **Create token**. The token appears once as
-  `Copy now, it is not shown again: ...`. Copy it before you do anything else.
+- **Create:** type a project name (up to 64 characters) and press **Create token**. The token appears once in
+  an accent-tinted box with a **Copy** button and the reminder “Shown once. Copy it before you leave.”
+  The box is cleared on the next create attempt or sign-out. Clipboard access has a fallback for plain HTTP;
+  if both methods are blocked, select the token and copy it manually.
 - **Use:** the caller sends it in the `X-Internal-Token` header on every call except `/health`.
-- **List:** the table shows project name and creation time. Token values are not shown again.
-- **Revoke:** press **Revoke** on the row and confirm. The caller gets `401 Invalid token` from then on. Lost
+- **List:** the table shows **Project**, **Created**, and **Last used**. Last used is **never** until a token
+  authenticates a request, then a relative time; hover a timestamp for its exact local time. The list refreshes
+  every 10 seconds. Token values are not shown again.
+- **Revoke:** press the red-outlined **Revoke** pill and confirm in the in-app dialog, which names the project.
+  **Cancel**, Escape, or a click on the backdrop closes the dialog. The caller gets `401 Invalid token` from then on. Lost
   token = revoke it and create a new one.
+
+Last-used timestamps are Unix seconds or null. They are persisted at most once per minute per token, so they
+are approximate. Old token files without the field still load and show **never** until next use. A companion
+`tokens.json.lock` file serializes updates across replicas without adding dependencies.
 
 Tokens live in `tokens.json` (`MINICPM_TOKENS_FILE`). In Docker that is the `tokens` volume at `/data`, so they
 survive `docker compose down` and rebuilds. Without Docker it is `tokens.json` in the folder the service starts from.
 Tokens are enforced only while `MINICPM_ADMIN_PASSWORD` is set.
 
 ## Ollama CPU threads
-Field **Ollama CPU threads**, then **Apply**.
+Use the synchronized slider or number field, then **Apply**. Both accept 1 to 256. Apply is disabled and
+shows a busy indicator during saving; a short **Saved** confirmation follows. The page states:
+“Saved to settings.json. Other replicas apply it on restart.”
 - Sets `num_thread` sent to Ollama with each request: how many CPU threads it uses per generation. Start near the
   number of physical cores the host can spare.
 - Range 1 to 256. The field shows the value in use now (`num_thread` in `/health`; empty = Ollama decides).
@@ -46,7 +63,8 @@ Field **Ollama CPU threads**, then **Apply**.
   to the `.env` value.
 
 ## Replicas and parallel requests (read-only)
-The line **API replicas: N. Requests Ollama runs at once: M** shows `MINICPM_REPLICAS` and `OLLAMA_NUM_PARALLEL`. The
+The tiles show replicas and Ollama parallel requests from `MINICPM_REPLICAS` and `OLLAMA_NUM_PARALLEL`.
+The muted line says **Replicas: N. Change MINICPM_REPLICAS in .env, then rebuild.** The
 page cannot change them. To change, set them in `.env`, then:
 ```bash
 docker compose up -d --build
