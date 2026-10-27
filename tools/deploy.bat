@@ -67,7 +67,7 @@ if not "!RC!"=="0" (
     exit /b 1
 )
 echo Done.
-call :reminder ".env is on the server. In the web terminal:" "docker compose up -d --build && docker compose restart minicpm_lb" "(run git pull here first if the code changed)"
+call :reminder ".env is on the server. In the web terminal:" "docker compose up -d --build" "(run git pull here first if the code changed)"
 exit /b 0
 
 rem :add <path relative to the MiniCPM51BModel root, same path on the server>
