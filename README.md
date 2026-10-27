@@ -23,7 +23,7 @@ together.
 counts against `max_tokens` (default 2048): `finish_reason: "length"` means the budget ran out, often with empty
 `content`.
 
-When `MINICPM_TOKEN` is set, send it as `X-Internal-Token`. Errors: 401 bad token, 422 bad request (or Ollama
+When `MINICPM_ADMIN_PASSWORD` is set, send a project token (made on `/admin/`) as `X-Internal-Token`. Errors: 401 bad token, 422 bad request (or Ollama
 refused the options), 502 Ollama down, model missing or invalid JSON under a `schema` (that body is
 `{"detail": {"message", "content"}}`), 504 Ollama timed out, 500 anything else.
 
@@ -43,7 +43,7 @@ changing the replica count, run `docker compose restart minicpm_lb`.
 
 ## Settings
 
-`MINICPM_HOST` (127.0.0.1), `MINICPM_PORT` (9130), `MINICPM_ADMIN_PASSWORD` (unlocks `/admin/`; falls back to `MINICPM_TOKEN`), `MINICPM_TOKEN`, `MINICPM_MODEL`
+`MINICPM_HOST` (127.0.0.1), `MINICPM_PORT` (9130), `MINICPM_ADMIN_PASSWORD` (unlocks `/admin/`; empty = no auth), `MINICPM_MODEL`
 (`hf.co/openbmb/MiniCPM5-1B-GGUF:Q4_K_M`; `:Q8_0` and `:F16` also exist), `OLLAMA_URL` (http://127.0.0.1:11434).
 
 ## Test
